@@ -187,7 +187,10 @@
               })
             ]
           };
+          const originalRandom = Math.random;
+          Math.random = () => 0; // Force particle spawning which requires Math.random() < 0.4
           onHandResults(mockPinch);
+          Math.random = originalRandom;
           addAssertion(particles.length > 0, `Laser Fingers: Pinch gesture successfully spawned ${particles.length} plasma particles.`);
         } else {
           addAssertion(false, "Laser Fingers mode solvers are not responding.");
@@ -222,12 +225,12 @@
           // Clear prev tip positions
           window.prevFingertipX = new Array(10).fill(0);
           
-          // Swipe finger 8 (index) across x-coordinate boundary (e.g. crossing string at x=200)
+          // Swipe finger 8 (index) across x-coordinate boundary to cross strings
           const mockSwipe1 = {
-            multiHandLandmarks: [Array(21).fill(null).map((_, idx) => idx === 8 ? { x: 0.45, y: 0.5 } : { x: 0.1, y: 0.1 })]
+            multiHandLandmarks: [Array(21).fill(null).map((_, idx) => idx === 8 ? { x: 0.35, y: 0.5 } : { x: 0.1, y: 0.1 })]
           };
           const mockSwipe2 = {
-            multiHandLandmarks: [Array(21).fill(null).map((_, idx) => idx === 8 ? { x: 0.55, y: 0.5 } : { x: 0.1, y: 0.1 })]
+            multiHandLandmarks: [Array(21).fill(null).map((_, idx) => idx === 8 ? { x: 0.65, y: 0.5 } : { x: 0.1, y: 0.1 })]
           };
           
           onHandResults(mockSwipe1);
