@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Motion AI - Hand-Tracking Visual & Auditory Playground</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Font Awesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- MediaPipe Hands & Camera Utils -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            outfit: ['Outfit', 'sans-serif'],
+            mono: ['Fira Code', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-[#0b0c16] text-[#e2e8f0] font-sans antialiased min-h-screen overflow-x-hidden relative">
+  <!-- Glowing Animated Background Gradients -->
+  <div class="fixed top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-gradient-to-br from-indigo-900/30 to-purple-900/20 blur-[120px] pointer-events-none z-0 pulse-slow"></div>
+  <div class="fixed bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-gradient-to-tr from-cyan-900/20 to-indigo-900/30 blur-[120px] pointer-events-none z-0 pulse-medium"></div>
+
+  <div class="relative z-10 flex flex-col min-h-screen">
+    <!-- Header -->
+    <header class="border-b border-white/5 bg-slate-950/40 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 to-cyan-500 flex items-center justify-center text-white shadow-[0_0_20px_rgba(139,92,246,0.5)] logo-glow">
+          <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold font-outfit tracking-wide bg-gradient-to-r from-white via-indigo-200 to-cyan-400 bg-clip-text text-transparent">Motion AI</h1>
+          <p class="text-[10px] text-cyan-400 font-mono tracking-widest uppercase">Intract. Play. Create</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-6">
+        <!-- Live System Status Indicators -->
+        <div class="hidden md:flex items-center gap-4 bg-slate-900/50 px-4 py-2 rounded-full border border-white/5 text-xs font-mono">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" id="camera-status-dot"></span>
+            <span class="text-slate-400" id="camera-status-text">Webcam: Inactive</span>
+          </div>
+          <span class="text-slate-700">|</span>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" id="tracking-status-dot"></span>
+            <span class="text-slate-400" id="tracking-status-text">Hands: Idle</span>
+          </div>
+          <span class="text-slate-700">|</span>
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-gauge text-slate-500"></i>
+            <span class="text-emerald-400 font-bold" id="fps-counter">0</span>
+            <span class="text-slate-500">FPS</span>
+          </div>
+        </div>
+
+        <!-- Master Power Control -->
+        <button id="btn-toggle-camera" class="px-5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-medium text-sm transition-all duration-300 shadow-[0_4px_20px_rgba(124,58,237,0.3)] hover:shadow-[0_4px_25px_rgba(124,58,237,0.5)] active:scale-95 flex items-center gap-2">
+          <i class="fa-solid fa-video" id="camera-btn-icon"></i>
+          <span id="camera-btn-text">Start Webcam</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Dashboard Body -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      <!-- Left Sidebar: Interaction Modes & Controls -->
+      <aside class="w-full lg:w-80 border-r border-white/5 bg-slate-950/30 backdrop-blur-lg flex flex-col shrink-0 overflow-y-auto custom-scrollbar">
+        <!-- Interactive Mode Selectors -->
+        <div class="p-5 border-b border-white/5">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4 font-mono">Select Interaction Mode</h2>
+          
+          <div class="flex flex-col gap-3" id="mode-selector-list">
+            <!-- Mode 1: Laser Fingers -->
+            <button data-mode="laser" class="mode-card active p-4 rounded-xl border border-white/5 hover:border-violet-500/30 bg-slate-900/35 hover:bg-slate-900/60 transition-all text-left flex items-start gap-3 relative group overflow-hidden">
+              <div class="mode-glow-overlay"></div>
+              <div class="w-10 h-10 rounded-lg bg-violet-950/50 border border-violet-500/20 text-violet-400 flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform duration-300">
+                <i class="fa-solid fa-bolt-lightning text-md"></i>
+              </div>
+              <div>
+                <h3 class="font-semibold text-sm text-slate-100 group-hover:text-white font-outfit">Laser Fingers</h3>
+                <p class="text-[11px] text-slate-400 mt-1 leading-snug">Neon visual beams emitting from fingertips with pinch plasma explosions.</p>
+              </div>
+            </button>
+
+            <!-- Mode 2: Spider Web -->
+            <button data-mode="web" class="mode-card p-4 rounded-xl border border-white/5 hover:border-cyan-500/30 bg-slate-900/35 hover:bg-slate-900/60 transition-all text-left flex items-start gap-3 relative group overflow-hidden">
+              <div class="mode-glow-overlay"></div>
+              <div class="w-10 h-10 rounded-lg bg-cyan-950/50 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform duration-300">
+                <i class="fa-solid fa-spider text-md"></i>
+              </div>
+              <div>
+                <h3 class="font-semibold text-sm text-slate-100 group-hover:text-white font-outfit">Spider Web Generator</h3>
+                <p class="text-[11px] text-slate-400 mt-1 leading-snug">Dynamic elastic webs connecting fingers. Pinch to place static anchors.</p>
+              </div>
+            </button>
+
+            <!-- Mode 3: Musical Harp -->
+            <button data-mode="harp" class="mode-card p-4 rounded-xl border border-white/5 hover:border-emerald-500/30 bg-slate-900/35 hover:bg-slate-900/60 transition-all text-left flex items-start gap-3 relative group overflow-hidden">
+              <div class="mode-glow-overlay"></div>
+              <div class="w-10 h-10 rounded-lg bg-emerald-950/50 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform duration-300">
+                <i class="fa-solid fa-guitar text-md"></i>
+              </div>
+              <div>
+                <h3 class="font-semibold text-sm text-slate-100 group-hover:text-white font-outfit">Musical Harp</h3>
+                <p class="text-[11px] text-slate-400 mt-1 leading-snug">Pluck physics-based virtual guitar strings to synthesize rich soundscapes.</p>
+              </div>
+            </button>
+
+            <!-- Mode 4: Air Paint -->
+            <button data-mode="paint" class="mode-card p-4 rounded-xl border border-white/5 hover:border-pink-500/30 bg-slate-900/35 hover:bg-slate-900/60 transition-all text-left flex items-start gap-3 relative group overflow-hidden">
+              <div class="mode-glow-overlay"></div>
+              <div class="w-10 h-10 rounded-lg bg-pink-950/50 border border-pink-500/20 text-pink-400 flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform duration-300">
+                <i class="fa-solid fa-palette text-md"></i>
+              </div>
+              <div>
+                <h3 class="font-semibold text-sm text-slate-100 group-hover:text-white font-outfit">Air Paint Brush</h3>
+                <p class="text-[11px] text-slate-400 mt-1 leading-snug">Draw in mid-air by pinching thumb/index. Multi-color fluid particle trails.</p>
+              </div>
+            </button>
+
+            <!-- Mode 5: Interview Practice -->
+            <button data-mode="interview" class="mode-card p-4 rounded-xl border border-white/5 hover:border-amber-500/30 bg-slate-900/35 hover:bg-slate-900/60 transition-all text-left flex items-start gap-3 relative group overflow-hidden">
+              <div class="mode-glow-overlay"></div>
+              <div class="w-10 h-10 rounded-lg bg-amber-950/50 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform duration-300">
+                <i class="fa-solid fa-microphone-lines text-md"></i>
+              </div>
+              <div>
+                <h3 class="font-semibold text-sm text-slate-100 group-hover:text-white font-outfit">Interview Practice</h3>
+                <p class="text-[11px] text-slate-400 mt-1 leading-snug">Analyze hand gestures, tremors/jitter, and speech filler words in real time.</p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mode Specific & General Sandbox Controls -->
+        <div class="p-5 flex-1 flex flex-col gap-6">
+          <div>
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4 font-mono">Sandbox Settings</h2>
+            
+            <div class="flex flex-col gap-4">
+              <!-- Visual Complexity -->
+              <div>
+                <div class="flex justify-between text-xs font-mono text-slate-400 mb-1">
+                  <span>Visual Density</span>
+                  <span id="val-particle-density">50</span>
+                </div>
+                <input type="range" id="slider-particle-density" min="10" max="150" value="50" class="cyber-slider">
+              </div>
+
+              <!-- Audio Settings -->
+              <div class="border-t border-white/5 pt-4">
+                <h3 class="text-xs font-semibold text-slate-400 mb-3 font-mono">Web Audio Synthesizer</h3>
+                <div class="flex flex-col gap-3">
+                  <!-- Waveform Selector -->
+                  <div>
+                    <label class="text-[10px] text-slate-500 font-mono uppercase block mb-1">Synth Waveform</label>
+                    <select id="select-waveform" class="w-full bg-slate-900 border border-white/10 rounded-lg py-1.5 px-3 text-xs text-slate-200 focus:outline-none focus:border-violet-500">
+                      <option value="sine">Sine Wave (Soft)</option>
+                      <option value="triangle" selected>Triangle Wave (Warm)</option>
+                      <option value="sawtooth">Sawtooth Wave (Bright)</option>
+                      <option value="square">Square Wave (Retro)</option>
+                    </select>
+                  </div>
+
+                  <!-- Volume Slider -->
+                  <div>
+                    <div class="flex justify-between text-xs font-mono text-slate-400 mb-1">
+                      <span>Volume</span>
+                      <span id="val-volume">40%</span>
+                    </div>
+                    <input type="range" id="slider-volume" min="0" max="100" value="40" class="cyber-slider">
+                  </div>
+
+                  <!-- Sound Delay Effect Toggle -->
+                  <div class="flex items-center justify-between text-xs font-mono">
+                    <span class="text-slate-400">Feedback Delay</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" id="toggle-delay" class="sr-only peer" checked>
+                      <div class="w-8 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-violet-600 peer-checked:after:bg-white"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Hand Tracking Detection Slider -->
+              <div class="border-t border-white/5 pt-4">
+                <h3 class="text-xs font-semibold text-slate-400 mb-3 font-mono">Handpose Config</h3>
+                <div>
+                  <div class="flex justify-between text-xs font-mono text-slate-400 mb-1">
+                    <span>Detection Threshold</span>
+                    <span id="val-confidence">50%</span>
+                  </div>
+                  <input type="range" id="slider-confidence" min="30" max="95" value="50" class="cyber-slider">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center & Right Panel: Interaction Area -->
+      <main class="flex-1 flex flex-col bg-[#08090f] overflow-y-auto lg:overflow-hidden relative">
+        <!-- Camera Viewport Layer -->
+        <div class="flex-1 flex flex-col p-4 lg:p-6 overflow-hidden relative">
+          
+          <!-- Floating Drawing Controls (Only visible in Paint mode) -->
+          <div id="paint-toolbar" class="hidden absolute top-10 left-1/2 transform -translate-x-1/2 z-30 bg-slate-950/70 border border-white/10 backdrop-blur-md px-4 py-2 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in">
+            <span class="text-[10px] text-slate-400 font-mono uppercase mr-1 border-r border-white/10 pr-2">Brush Color</span>
+            <div class="flex items-center gap-2">
+              <button data-color="#3b82f6" class="w-6 h-6 rounded-full bg-blue-500 border-2 border-white ring-2 ring-transparent hover:scale-115 active:scale-95 transition-all color-btn active"></button>
+              <button data-color="#ec4899" class="w-6 h-6 rounded-full bg-pink-500 border-2 border-transparent hover:scale-115 active:scale-95 transition-all color-btn"></button>
+              <button data-color="#eab308" class="w-6 h-6 rounded-full bg-yellow-500 border-2 border-transparent hover:scale-115 active:scale-95 transition-all color-btn"></button>
+              <button data-color="#10b981" class="w-6 h-6 rounded-full bg-emerald-500 border-2 border-transparent hover:scale-115 active:scale-95 transition-all color-btn"></button>
+              <button data-color="#a855f7" class="w-6 h-6 rounded-full bg-purple-500 border-2 border-transparent hover:scale-115 active:scale-95 transition-all color-btn"></button>
+              <button data-color="eraser" class="w-6 h-6 rounded-full bg-slate-800 border border-white/20 flex items-center justify-center text-[10px] hover:scale-115 active:scale-95 transition-all color-btn" title="Eraser">
+                <i class="fa-solid fa-eraser text-slate-400"></i>
+              </button>
+            </div>
+            <span class="w-px h-5 bg-white/10 mx-1"></span>
+            <button id="btn-clear-canvas" class="px-3 py-1 bg-slate-900 border border-white/10 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-all flex items-center gap-1">
+              <i class="fa-solid fa-trash-can"></i> Clear
+            </button>
+          </div>
+
+          <!-- Main Camera/Canvas Sandbox Box -->
+          <div class="flex-1 w-full bg-slate-950/40 border border-white/5 rounded-3xl relative overflow-hidden flex items-center justify-center glassmorphism shadow-[0_0_50px_rgba(0,0,0,0.5)] min-h-[350px] lg:min-h-0">
+            <!-- Hidden Video Feed -->
+            <video id="webcam-video" autoplay playsinline muted class="hidden"></video>
+            
+            <!-- Dynamic Canvas Visual Overlay -->
+            <canvas id="sandbox-canvas" class="absolute w-full h-full object-cover rounded-3xl z-20"></canvas>
+            
+            <!-- Live Background Video Render Container (Mirrored for natural feel) -->
+            <div id="video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-10 select-none">
+              <div class="w-20 h-20 rounded-full bg-slate-900/80 border border-white/5 flex items-center justify-center text-slate-500 mb-4 animate-bounce">
+                <i class="fa-solid fa-camera text-3xl"></i>
+              </div>
+              <h3 class="text-lg font-bold font-outfit text-slate-300">Camera Inactive</h3>
+              <p class="text-sm text-slate-500 max-w-sm mt-1 leading-relaxed">Please click "Start Webcam" at the top right, grant camera permissions, and position your hands in front of the lens.</p>
+              
+              <!-- Loader overlay -->
+              <div id="mp-loader" class="hidden flex-col items-center mt-6">
+                <div class="w-8 h-8 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin mb-3"></div>
+                <p class="text-xs text-indigo-400 font-mono">Initializing MediaPipe Handpose Engine...</p>
+              </div>
+            </div>
+
+            <!-- Speech Transcript Bar (Only visible in Interview Mode) -->
+            <div id="speech-overlay" class="hidden absolute bottom-6 left-6 right-6 bg-slate-950/80 backdrop-blur-md border border-amber-500/20 px-5 py-3.5 rounded-2xl z-30 shadow-2xl flex items-center gap-3.5 animate-slide-up">
+              <div class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping shrink-0"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-red-600 absolute left-[25px] shrink-0"></div>
+              <div class="flex-1 text-sm text-slate-300 italic font-mono overflow-hidden whitespace-nowrap text-ellipsis" id="speech-transcript">
+                Listening to speech... Speak clearly.
+              </div>
+              <div class="text-[10px] text-amber-500 font-mono bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/10 uppercase font-semibold">
+                Speech Feed
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Audio Visualizer & Audio Profile Panel -->
+          <div class="mt-4 bg-slate-950/20 border border-white/5 rounded-2xl px-5 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4 z-10 backdrop-blur-sm">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-xs">
+                <i class="fa-solid fa-volume-high"></i>
+              </div>
+              <div>
+                <h4 class="text-xs font-semibold text-slate-300">Live Synth Visualizer</h4>
+                <p class="text-[10px] text-slate-500 font-mono">Web Audio API Output Frequencies</p>
+              </div>
+            </div>
+            
+            <!-- Frequencies Waveform Visualizer Canvas -->
+            <div class="flex-1 h-8 max-w-lg bg-slate-950/40 border border-white/5 rounded-lg overflow-hidden relative">
+              <canvas id="audio-visualizer-canvas" class="w-full h-full"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panels Sidebar: Interview Analytics (Overlay/Toggleable panel) -->
+        <div id="interview-dashboard" class="hidden w-full lg:w-[320px] shrink-0 border-l border-white/5 bg-slate-950/40 backdrop-blur-xl p-5 lg:overflow-y-auto lg:h-full flex flex-col gap-6 z-30">
+          <div class="flex items-center justify-between border-b border-white/5 pb-4">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-chart-line text-amber-400"></i>
+              <h3 class="font-bold text-sm text-slate-200 font-outfit uppercase tracking-wider">Session Analytics</h3>
+            </div>
+            <span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 text-[10px] rounded border border-amber-500/20 font-mono uppercase font-bold" id="session-time">00:00</span>
+          </div>
+
+          <!-- Score Card -->
+          <div class="bg-gradient-to-br from-slate-900 to-slate-950 border border-white/5 rounded-2xl p-5 flex flex-col items-center text-center shadow-xl relative overflow-hidden group">
+            <div class="absolute inset-0 bg-gradient-to-tr from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+            <span class="text-xs text-slate-400 font-semibold mb-3 font-mono">Confidence Level</span>
+            
+            <!-- Circle Rating -->
+            <div class="relative w-28 h-28 flex items-center justify-center">
+              <svg class="w-full h-full transform -rotate-90">
+                <circle cx="56" cy="56" r="46" stroke="#1e293b" stroke-width="8" fill="transparent" />
+                <circle id="score-circle-progress" cx="56" cy="56" r="46" stroke="#f59e0b" stroke-width="8" fill="transparent" 
+                        stroke-dasharray="289" stroke-dashoffset="289" class="transition-all duration-500 stroke-linecap-round" />
+              </svg>
+              <div class="absolute flex flex-col items-center">
+                <span class="text-3xl font-extrabold font-outfit text-white" id="score-text">0%</span>
+                <span class="text-[9px] text-slate-500 uppercase tracking-widest font-mono">Score</span>
+              </div>
+            </div>
+
+            <!-- Dynamic State Rating Tag -->
+            <span class="mt-4 px-3 py-1 bg-amber-500/10 text-amber-400 text-xs rounded-full border border-amber-500/10 font-bold uppercase tracking-wider" id="score-label">Calibrating</span>
+          </div>
+
+          <!-- Telemetry Stats List -->
+          <div class="flex flex-col gap-3">
+            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Real-time Telemetry</h4>
+            
+            <div class="grid grid-cols-2 gap-2">
+              <div class="bg-slate-900/40 border border-white/5 rounded-xl p-3 text-center">
+                <span class="text-[10px] text-slate-500 font-mono block mb-1">Hand Velocity</span>
+                <span class="text-base font-bold font-outfit text-slate-200" id="stat-hand-speed">0.0<span class="text-xs text-slate-500">m/s</span></span>
+              </div>
+              <div class="bg-slate-900/40 border border-white/5 rounded-xl p-3 text-center">
+                <span class="text-[10px] text-slate-500 font-mono block mb-1">Hand Jitter</span>
+                <span class="text-base font-bold font-outfit text-slate-200" id="stat-hand-jitter">0.0<span class="text-xs text-slate-500">hz</span></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filler Words Analytics -->
+          <div class="flex flex-col gap-3">
+            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Filler Word Counter</h4>
+            <div class="bg-slate-900/30 border border-white/5 rounded-xl p-4 flex flex-col gap-3.5 shadow-md">
+              <div class="flex justify-between items-center text-xs font-mono">
+                <span class="text-slate-400">"Um" / "Ah"</span>
+                <span class="px-2.5 py-0.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold rounded-lg" id="count-filler-um">0</span>
+              </div>
+              <div class="flex justify-between items-center text-xs font-mono">
+                <span class="text-slate-400">"Like"</span>
+                <span class="px-2.5 py-0.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold rounded-lg" id="count-filler-like">0</span>
+              </div>
+              <div class="flex justify-between items-center text-xs font-mono">
+                <span class="text-slate-400">"So"</span>
+                <span class="px-2.5 py-0.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold rounded-lg" id="count-filler-so">0</span>
+              </div>
+              <div class="flex justify-between items-center text-xs font-mono">
+                <span class="text-slate-400">"You know"</span>
+                <span class="px-2.5 py-0.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold rounded-lg" id="count-filler-youknow">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Suggestions & Dynamic Tips -->
+          <div class="flex-1 flex flex-col gap-3">
+            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Coaching Feedback</h4>
+            <div class="flex-1 bg-slate-900/30 border border-white/5 rounded-2xl p-4 text-xs leading-relaxed text-slate-300 min-h-[100px] max-h-[180px] overflow-y-auto custom-scrollbar flex flex-col gap-2" id="coaching-feed">
+              <div class="flex gap-2 text-slate-400 italic">
+                <i class="fa-solid fa-circle-info mt-0.5 shrink-0 text-slate-500"></i>
+                <p>Awaiting speech patterns. Start webcam and practice speaking while gesturing with your hands.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- End Session & Show Report button -->
+          <button id="btn-end-interview" class="w-full mb-2.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-xs font-semibold font-mono text-slate-900 transition-all active:scale-98 flex items-center justify-center gap-2 shadow-[0_4px_15px_rgba(245,158,11,0.2)]">
+            <i class="fa-solid fa-square-poll-vertical"></i> End Session & Review
+          </button>
+
+          <!-- Reset / Restart practice session button -->
+          <button id="btn-reset-interview" class="w-full py-2.5 rounded-xl border border-white/10 hover:border-amber-500/20 bg-slate-900/60 hover:bg-amber-500/10 text-xs font-semibold font-mono text-slate-400 hover:text-amber-400 transition-all active:scale-98 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-arrows-rotate"></i> Reset Interview Session
+          </button>
+        </div>
+      </main>
+    </div>
+
+    <!-- Terminal Status Log Tray (Auto-collapsible or status monitor) -->
+    <footer class="border-t border-white/5 bg-slate-950/80 px-6 py-3 shrink-0 flex flex-col md:flex-row justify-between md:items-center gap-3 text-[11px] font-mono text-slate-500 relative z-30 select-none">
+      <div class="flex items-center gap-2 overflow-hidden">
+        <i class="fa-solid fa-terminal text-indigo-400 shrink-0"></i>
+        <span class="text-slate-400">System Log:</span>
+        <span class="text-slate-300 truncate font-mono text-left" id="val-syslog">Awaiting camera initialization...</span>
+      </div>
+      <div class="flex items-center gap-4 text-slate-600 shrink-0">
+        <span>Press 'C' key to quickly clear drawing canvas</span>
+        <span>|</span>
+        <span>HTML5 Canvas + Web Audio v1.0</span>
+      </div>
+    </footer>
+  </div>
+
+    <!-- Session Evaluation Report Modal -->
+    <div id="report-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-fade-in">
+      <div class="relative w-full max-w-2xl bg-gradient-to-br from-slate-900 to-[#0e0f19] border border-white/10 rounded-3xl p-6 lg:p-8 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <!-- Cyberpunk glows inside modal -->
+        <div class="absolute -top-20 -left-20 w-48 h-48 rounded-full bg-amber-500/10 blur-[50px] pointer-events-none"></div>
+        <div class="absolute -bottom-20 -right-20 w-48 h-48 rounded-full bg-indigo-500/10 blur-[50px] pointer-events-none"></div>
+        
+        <div class="flex items-center justify-between border-b border-white/5 pb-4 mb-6">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+              <i class="fa-solid fa-trophy"></i>
+            </div>
+            <div>
+              <h3 class="font-bold font-outfit text-lg text-slate-100">Performance Scorecard</h3>
+              <p class="text-[10px] text-slate-500 font-mono uppercase">Motion AI Evaluation Complete</p>
+            </div>
+          </div>
+          <button id="btn-close-report" class="text-slate-500 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 mb-6">
+          <!-- Score circle & Grade -->
+          <div class="md:col-span-5 bg-slate-950/40 border border-white/5 rounded-2xl p-5 flex flex-col items-center justify-center text-center">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono mb-4">Overall Score</span>
+            
+            <div class="relative w-28 h-28 flex items-center justify-center mb-3">
+              <svg class="w-full h-full transform -rotate-90">
+                <circle cx="56" cy="56" r="46" stroke="#1e293b" stroke-width="8" fill="transparent" />
+                <circle id="modal-score-circle" cx="56" cy="56" r="46" stroke="#f59e0b" stroke-width="8" fill="transparent" 
+                        stroke-dasharray="289" stroke-dashoffset="289" class="transition-all duration-700 stroke-linecap-round" />
+              </svg>
+              <div class="absolute flex flex-col items-center">
+                <span class="text-3xl font-extrabold font-outfit text-white" id="modal-score-text">0%</span>
+                <span class="text-[10px] text-amber-400 font-bold uppercase tracking-widest font-mono" id="modal-grade-text">A-</span>
+              </div>
+            </div>
+            
+            <span class="text-xs text-slate-400 font-mono">Duration: <span id="modal-duration" class="text-white font-bold">01:30</span></span>
+          </div>
+
+          <!-- Metrics Breakdown -->
+          <div class="md:col-span-7 flex flex-col gap-4">
+            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Core Metrics Assessment</h4>
+            
+            <div class="flex flex-col gap-3">
+              <!-- Speed -->
+              <div>
+                <div class="flex justify-between text-xs font-mono text-slate-400 mb-1">
+                  <span>Gesture Expressiveness</span>
+                  <span id="modal-metric-speed" class="text-white font-bold">Good</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div id="modal-bar-speed" class="bg-indigo-500 h-full rounded-full transition-all duration-500" style="width: 70%"></div>
+                </div>
+              </div>
+              
+              <!-- Jitter -->
+              <div>
+                <div class="flex justify-between text-xs font-mono text-slate-400 mb-1">
+                  <span>Body Language Stability</span>
+                  <span id="modal-metric-jitter" class="text-white font-bold">Stable</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div id="modal-bar-jitter" class="bg-cyan-500 h-full rounded-full transition-all duration-500" style="width: 80%"></div>
+                </div>
+              </div>
+
+              <!-- Verbal Clarity -->
+              <div>
+                <div class="flex justify-between text-xs font-mono text-slate-400 mb-1">
+                  <span>Verbal Clarity (Speech)</span>
+                  <span id="modal-metric-clarity" class="text-white font-bold">Excellent</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div id="modal-bar-clarity" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 90%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Verbal & Telemetry Summary -->
+        <div class="bg-slate-950/40 border border-white/5 rounded-2xl p-4 mb-6">
+          <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono mb-3">Verbal Flubs Recap</h4>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+            <div class="bg-slate-900/40 border border-white/5 rounded-xl py-2.5">
+              <span class="text-[9px] text-slate-500 font-mono block">"Um" / "Ah"</span>
+              <span class="text-sm font-bold text-slate-200" id="modal-count-um">0</span>
+            </div>
+            <div class="bg-slate-900/40 border border-white/5 rounded-xl py-2.5">
+              <span class="text-[9px] text-slate-500 font-mono block">"Like"</span>
+              <span class="text-sm font-bold text-slate-200" id="modal-count-like">0</span>
+            </div>
+            <div class="bg-slate-900/40 border border-white/5 rounded-xl py-2.5">
+              <span class="text-[9px] text-slate-500 font-mono block">"So"</span>
+              <span class="text-sm font-bold text-slate-200" id="modal-count-so">0</span>
+            </div>
+            <div class="bg-slate-900/40 border border-white/5 rounded-xl py-2.5">
+              <span class="text-[9px] text-slate-500 font-mono block">"You know"</span>
+              <span class="text-sm font-bold text-slate-200" id="modal-count-youknow">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actionable takeaways -->
+        <div class="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 mb-6">
+          <h4 class="text-[10px] font-bold text-amber-400 uppercase tracking-widest font-mono mb-2"><i class="fa-solid fa-lightbulb"></i> Actionable Coaching Key Takeaway</h4>
+          <p class="text-xs text-slate-300 leading-relaxed" id="modal-coaching-takeaway">No telemetry recorded yet. Speak while gesturing to compile feedback suggestions.</p>
+        </div>
+
+        <div class="flex gap-4">
+          <button id="btn-modal-restart" class="flex-1 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 rounded-xl text-xs font-semibold text-white font-mono transition-all active:scale-98 flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(124,58,237,0.3)]">
+            <i class="fa-solid fa-rotate-right"></i> Try Practice Again
+          </button>
+          <button id="btn-modal-download" class="px-4 py-3 bg-slate-900 border border-white/10 hover:bg-slate-800 hover:text-white rounded-xl text-xs font-semibold text-slate-300 font-mono transition-all active:scale-98 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-download"></i> Save Report
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main JavaScript App -->
+    <script src="app.js"></script>
+</body>
+</html>

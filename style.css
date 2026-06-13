@@ -1,0 +1,215 @@
+/* Custom styling for Hand-Tracking Visual Playground */
+
+/* Root & Theme variables */
+:root {
+  --color-indigo-glow: rgba(99, 102, 241, 0.4);
+  --color-violet-glow: rgba(139, 92, 246, 0.5);
+  --color-cyan-glow: rgba(6, 182, 212, 0.4);
+  --color-amber-glow: rgba(245, 158, 11, 0.4);
+  --color-pink-glow: rgba(236, 72, 153, 0.4);
+}
+
+/* Glassmorphism Styles */
+.glassmorphism {
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Animations */
+@keyframes bgPulseSlow {
+  0%, 100% { transform: scale(1) translate(0px, 0px); opacity: 0.3; }
+  50% { transform: scale(1.15) translate(40px, -20px); opacity: 0.4; }
+}
+
+@keyframes bgPulseMedium {
+  0%, 100% { transform: scale(1) translate(0px, 0px); opacity: 0.2; }
+  50% { transform: scale(1.1) translate(-30px, 30px); opacity: 0.3; }
+}
+
+.pulse-slow {
+  animation: bgPulseSlow 18s ease-in-out infinite;
+}
+
+.pulse-medium {
+  animation: bgPulseMedium 14s ease-in-out infinite;
+}
+
+/* Custom Scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.1);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.3);
+}
+
+/* Cyberpunk Range Inputs (Sliders) */
+.cyber-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  outline: none;
+  transition: background 0.3s;
+}
+
+.cyber-slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  cursor: pointer;
+}
+
+.cyber-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #a855f7;
+  cursor: pointer;
+  margin-top: -4px;
+  box-shadow: 0 0 10px #a855f7, 0 0 20px rgba(168, 85, 247, 0.4);
+  transition: transform 0.15s, background-color 0.15s;
+}
+
+.cyber-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.3);
+  background: #c084fc;
+}
+
+/* Active Mode Card Glow Borders */
+.mode-card {
+  position: relative;
+  transition: all 0.30s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mode-card.active {
+  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(124, 58, 237, 0.08);
+  box-shadow: 0 0 25px rgba(124, 58, 237, 0.12), inset 0 0 12px rgba(124, 58, 237, 0.06);
+}
+
+/* Mode-specific colors for active states */
+.mode-card[data-mode="laser"].active {
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.08);
+  box-shadow: 0 0 25px rgba(139, 92, 246, 0.12);
+}
+
+.mode-card[data-mode="web"].active {
+  border-color: rgba(6, 182, 212, 0.45);
+  background: rgba(6, 182, 212, 0.08);
+  box-shadow: 0 0 25px rgba(6, 182, 212, 0.12);
+}
+
+.mode-card[data-mode="harp"].active {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.08);
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.12);
+}
+
+.mode-card[data-mode="paint"].active {
+  border-color: rgba(236, 72, 153, 0.45);
+  background: rgba(236, 72, 153, 0.08);
+  box-shadow: 0 0 25px rgba(236, 72, 153, 0.12);
+}
+
+.mode-card[data-mode="interview"].active {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.08);
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.12);
+}
+
+/* Neon Glow Animation for Logo */
+.logo-glow {
+  animation: logoPulse 3s infinite alternate;
+}
+
+@keyframes logoPulse {
+  0% { box-shadow: 0 0 10px rgba(139,92,246,0.3); }
+  100% { box-shadow: 0 0 25px rgba(139,92,246,0.6), 0 0 40px rgba(6,182,212,0.3); }
+}
+
+/* Animated hover overlay gradient for mode cards */
+.mode-glow-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(800px circle at var(--x, 0px) var(--y, 0px), rgba(255, 255, 255, 0.04), transparent 40%);
+  opacity: 0;
+  transition: opacity 0.5s;
+  pointer-events: none;
+}
+
+.mode-card:hover .mode-glow-overlay {
+  opacity: 1;
+}
+
+/* Slide Up and Fade In keyframes */
+@keyframes slideUp {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+/* Mirrored video display for natural user perspective */
+#webcam-video {
+  transform: scaleX(-1);
+}
+
+#sandbox-canvas {
+  transform: scaleX(-1);
+}
+
+/* Drawing Floating Toolbar Style */
+.color-btn.active {
+  transform: scale(1.15);
+  box-shadow: 0 0 12px currentColor;
+}
+
+/* Speech Analysis Coaching feedback cards */
+.feedback-item {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom Webkit scrollbar for side panel */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.15);
+}

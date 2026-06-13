@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Motion AI Automated Test Suite</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- MediaPipe loaders needed for app.js initialization -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 p-8 font-sans">
+  <div class="max-w-4xl mx-auto bg-slate-900/80 border border-slate-800 rounded-3xl p-8 backdrop-blur-md shadow-2xl">
+    <h1 class="text-3xl font-extrabold bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent mb-2">Motion AI Test Suite</h1>
+    <p class="text-sm text-slate-400 font-mono mb-6 border-b border-slate-800 pb-4">Automated Verification Checklist</p>
+
+    <!-- Test Scorecard Results -->
+    <div class="mb-8 bg-slate-950/50 border border-slate-800 rounded-2xl p-6">
+      <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4 font-mono">Assertion Checklists</h2>
+      <div id="test-results" class="flex flex-col gap-3.5">
+        <div class="flex items-center gap-3 text-slate-500 font-mono">
+          <div class="w-5 h-5 rounded-full border border-slate-800 animate-spin border-t-indigo-500"></div>
+          <span>Initializing tests...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hidden standard page elements required by app.js -->
+    <div style="display: none;">
+      <video id="webcam-video" autoplay playsinline muted></video>
+      <canvas id="sandbox-canvas"></canvas>
+      <canvas id="audio-visualizer-canvas"></canvas>
+      
+      <button id="btn-toggle-camera"><i id="camera-btn-icon"></i><span id="camera-btn-text"></span></button>
+      <span id="camera-status-dot"></span>
+      <span id="camera-status-text"></span>
+      <span id="tracking-status-dot"></span>
+      <span id="tracking-status-text"></span>
+      <span id="fps-counter"></span>
+      <span id="val-syslog"></span>
+      <div id="mp-loader"></div>
+      <div id="video-placeholder"></div>
+
+      <input type="range" id="slider-volume" value="40">
+      <span id="val-volume">40%</span>
+      <input type="range" id="slider-particle-density" value="50">
+      <span id="val-particle-density">50</span>
+      <input type="range" id="slider-confidence" value="50">
+      <span id="val-confidence">50%</span>
+      <select id="select-waveform"><option value="triangle" selected>Triangle</option></select>
+      <input type="checkbox" id="toggle-delay" checked>
+
+      <!-- Mode Cards -->
+      <button data-mode="laser" class="mode-card active"><h3>Laser</h3></button>
+      <button data-mode="web" class="mode-card"><h3>Web</h3></button>
+      <button data-mode="harp" class="mode-card"><h3>Harp</h3></button>
+      <button data-mode="paint" class="mode-card"><h3>Paint</h3></button>
+      <button data-mode="interview" class="mode-card"><h3>Interview</h3></button>
+
+      <!-- Toolbars & Overlay -->
+      <div id="paint-toolbar">
+        <button data-color="#3b82f6" class="color-btn active"></button>
+        <button data-color="#ec4899" class="color-btn"></button>
+        <button data-color="eraser" class="color-btn"></button>
+        <button id="btn-clear-canvas"></button>
+      </div>
+
+      <div id="interview-dashboard">
+        <span id="session-time">00:00</span>
+        <svg><circle id="score-circle-progress" cx="56" cy="56" r="46"></circle></svg>
+        <span id="score-text">0%</span>
+        <span id="score-label"></span>
+        <span id="stat-hand-speed"></span>
+        <span id="stat-hand-jitter"></span>
+        <span id="count-filler-um">0</span>
+        <span id="count-filler-like">0</span>
+        <span id="count-filler-so">0</span>
+        <span id="count-filler-youknow">0</span>
+        <div id="coaching-feed"></div>
+        <button id="btn-end-interview"></button>
+        <button id="btn-reset-interview"></button>
+      </div>
+
+      <div id="speech-overlay">
+        <span id="speech-transcript"></span>
+      </div>
+
+      <!-- Mock Report Modal elements -->
+      <div id="report-modal">
+        <button id="btn-close-report"></button>
+        <button id="btn-modal-restart"></button>
+        <button id="btn-modal-download"></button>
+        <svg><circle id="modal-score-circle"></circle></svg>
+        <span id="modal-score-text"></span>
+        <span id="modal-grade-text"></span>
+        <span id="modal-duration"></span>
+        <span id="modal-metric-speed"></span>
+        <span id="modal-metric-jitter"></span>
+        <span id="modal-metric-clarity"></span>
+        <div id="modal-bar-speed"></div>
+        <div id="modal-bar-jitter"></div>
+        <div id="modal-bar-clarity"></div>
+        <span id="modal-count-um"></span>
+        <span id="modal-count-like"></span>
+        <span id="modal-count-so"></span>
+        <span id="modal-count-youknow"></span>
+        <p id="modal-coaching-takeaway"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load Main Application Logic -->
+  <script src="app.js"></script>
+
+  <!-- Automated Test Runner Script -->
+  <script>
+    window.addEventListener('load', async () => {
+      // 1. Mock Camera behaviors to bypass hardware constraints during tests
+      window.initMediaPipe = () => {
+        console.log('Mocked MediaPipe setup.');
+        state.isCameraActive = true;
+      };
+
+      const testContainer = document.getElementById('test-results');
+      testContainer.innerHTML = ''; // clear loading state
+
+      const results = [];
+      const addAssertion = (passed, message) => {
+        results.push({ passed, message });
+        const item = document.createElement('div');
+        item.className = `flex items-center gap-3 font-mono text-sm p-3.5 rounded-xl border ${
+          passed 
+            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+            : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+        }`;
+        
+        const icon = passed 
+          ? '<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>'
+          : '<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>';
+        
+        item.innerHTML = `${icon} <span>${message}</span>`;
+        testContainer.appendChild(item);
+      };
+
+      // --- RUN ASSERTIONS ---
+      try {
+        // 1. Check Global Scope State
+        if (typeof state !== 'undefined') {
+          addAssertion(true, "Application global state object is loaded and reactive.");
+        } else {
+          addAssertion(false, "Application global state object is missing.");
+        }
+
+        // 2. Test Audio Initializer
+        if (typeof initAudio === 'function') {
+          initAudio();
+          addAssertion(true, "Web Audio API synth context initialized successfully.");
+        } else {
+          addAssertion(false, "Audio context function 'initAudio' is missing.");
+        }
+
+        // 3. Test Mode Toggles (Simulating Clicks)
+        const cards = document.querySelectorAll('.mode-card');
+        if (cards.length === 5) {
+          cards[1].click(); // web
+          const modeCheck1 = (state.currentMode === 'web');
+          cards[2].click(); // harp
+          const modeCheck2 = (state.currentMode === 'harp');
+          addAssertion(modeCheck1 && modeCheck2, "UI Mode buttons toggle the 'state.currentMode' variable correctly.");
+        } else {
+          addAssertion(false, "Sidebar Mode cards are missing in DOM.");
+        }
+
+        // 4. Test Mode 1: Laser Fingers Pinch Physics
+        cards[0].click(); // laser
+        if (typeof onHandResults === 'function' && typeof particles !== 'undefined') {
+          particles.length = 0;
+          // Mock a pinch gesture between thumb(4) and index(8) at coordinates 0.5, 0.5
+          const mockPinch = {
+            multiHandLandmarks: [
+              Array(21).fill(null).map((_, idx) => {
+                if (idx === 4) return { x: 0.5, y: 0.5, z: 0 };
+                if (idx === 8) return { x: 0.51, y: 0.51, z: 0 };
+                return { x: 0.1, y: 0.1, z: 0 };
+              })
+            ]
+          };
+          onHandResults(mockPinch);
+          addAssertion(particles.length > 0, `Laser Fingers: Pinch gesture successfully spawned ${particles.length} plasma particles.`);
+        } else {
+          addAssertion(false, "Laser Fingers mode solvers are not responding.");
+        }
+
+        // 5. Test Mode 2: Spider Web Anchor Placement
+        cards[1].click(); // web
+        if (typeof onHandResults === 'function' && typeof webAnchors !== 'undefined') {
+          webAnchors.length = 0;
+          // Set cooldown to 0 to bypass repeat block
+          window.anchorPinchCooldown = 0;
+          const mockPinch = {
+            multiHandLandmarks: [
+              Array(21).fill(null).map((_, idx) => {
+                if (idx === 4) return { x: 0.5, y: 0.5, z: 0 };
+                if (idx === 8) return { x: 0.51, y: 0.51, z: 0 };
+                return { x: 0.1, y: 0.1, z: 0 };
+              })
+            ]
+          };
+          onHandResults(mockPinch);
+          addAssertion(webAnchors.length === 1, `Spider Web: Pinch gesture successfully anchored web nodes (webAnchors count: ${webAnchors.length}).`);
+        } else {
+          addAssertion(false, "Spider Web anchors solver is not responding.");
+        }
+
+        // 6. Test Mode 3: Harp String Plucking Physics
+        cards[2].click(); // harp
+        if (typeof harpStrings !== 'undefined' && typeof onHandResults === 'function') {
+          initHarpStrings(600);
+          
+          // Clear prev tip positions
+          window.prevFingertipX = new Array(10).fill(0);
+          
+          // Swipe finger 8 (index) across x-coordinate boundary (e.g. crossing string at x=200)
+          const mockSwipe1 = {
+            multiHandLandmarks: [Array(21).fill(null).map((_, idx) => idx === 8 ? { x: 0.45, y: 0.5 } : { x: 0.1, y: 0.1 })]
+          };
+          const mockSwipe2 = {
+            multiHandLandmarks: [Array(21).fill(null).map((_, idx) => idx === 8 ? { x: 0.55, y: 0.5 } : { x: 0.1, y: 0.1 })]
+          };
+          
+          onHandResults(mockSwipe1);
+          onHandResults(mockSwipe2);
+
+          const vibratingStrings = harpStrings.filter(s => Math.abs(s.displacement) > 0.1 || Math.abs(s.velocity) > 0.1);
+          addAssertion(vibratingStrings.length > 0, `Musical Harp: String crossing triggered physical displacement / vibration solvers.`);
+        } else {
+          addAssertion(false, "Musical Harp string solver is not responding.");
+        }
+
+        // 7. Test Mode 4: Air Paint Stroke Buffers
+        cards[3].click(); // paint
+        if (typeof paintStrokes !== 'undefined' && typeof onHandResults === 'function') {
+          paintStrokes.length = 0;
+          window.isPaintActive = false;
+          
+          const mockDraw = {
+            multiHandLandmarks: [
+              Array(21).fill(null).map((_, idx) => {
+                if (idx === 4) return { x: 0.3, y: 0.3 };
+                if (idx === 8) return { x: 0.31, y: 0.31 };
+                return { x: 0.1, y: 0.1 };
+              })
+            ]
+          };
+          onHandResults(mockDraw);
+          const drawCheck1 = (paintStrokes.length > 0);
+
+          // Clear canvas using keydown listener
+          window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', code: 'KeyC' }));
+          const drawCheck2 = (paintStrokes.length === 0);
+
+          addAssertion(drawCheck1 && drawCheck2, "Air Paint: Pinch drawing writes coordinates to buffer, and keyboard 'C' resets the canvas.");
+        } else {
+          addAssertion(false, "Air Paint solver is not responding.");
+        }
+
+        // 8. Test Mode 5: Interview Telemetry & Speech Analyser
+        cards[4].click(); // interview
+        if (typeof analyzeFillerWords === 'function') {
+          // Send words to analyser
+          analyzeFillerWords("like");
+          analyzeFillerWords("um");
+          analyzeFillerWords("so");
+          analyzeFillerWords("you know");
+
+          const umVal = parseInt(document.getElementById('count-filler-um').textContent, 10);
+          const likeVal = parseInt(document.getElementById('count-filler-like').textContent, 10);
+          const soVal = parseInt(document.getElementById('count-filler-so').textContent, 10);
+          const ykVal = parseInt(document.getElementById('count-filler-youknow').textContent, 10);
+
+          const speechPass = (umVal > 0 && likeVal > 0 && soVal > 0 && ykVal > 0);
+          
+          // Test modal generation
+          const btnEnd = document.getElementById('btn-end-interview');
+          const rModal = document.getElementById('report-modal');
+          btnEnd.click();
+          const modalOpen = !rModal.classList.contains('hidden');
+          rModal.classList.add('hidden'); // hide again
+
+          addAssertion(speechPass && modalOpen, "Interview Speech Analyzer & Scorecard: Filler word regex increments counters, and 'End Session' compiles the evaluation report modal.");
+        } else {
+          addAssertion(false, "Interview Speech Analyzer is not responding.");
+        }
+
+      } catch (e) {
+        addAssertion(false, `Runtime test error: ${e.message}`);
+      }
+    });
+  </script>
+</body>
+</html>
